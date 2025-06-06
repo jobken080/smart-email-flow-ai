@@ -4,13 +4,16 @@ import { Layout } from '../components/Layout';
 import { Dashboard } from '../components/Dashboard';
 import { EmailProcessor } from '../components/EmailProcessor';
 import { Analytics } from '../components/Analytics';
+import { TeamManagement } from '../components/TeamManagement';
+import { SettingsPanel } from '../components/SettingsPanel';
+import { EmailList } from '../components/EmailList';
 import { Button } from '../components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 import { Badge } from '../components/ui/badge';
 import { Brain, Mail, BarChart3, Zap, Clock, Star, TrendingUp, Users, Settings } from 'lucide-react';
 
 const Index = () => {
-  const [activeView, setActiveView] = useState<'dashboard' | 'processor' | 'analytics'>('dashboard');
+  const [activeView, setActiveView] = useState<'dashboard' | 'processor' | 'analytics' | 'settings' | 'team'>('dashboard');
 
   const features = [
     {
@@ -42,18 +45,27 @@ const Index = () => {
   const renderActiveView = () => {
     switch (activeView) {
       case 'dashboard':
-        return <Dashboard />;
+        return (
+          <div className="space-y-8">
+            <Dashboard />
+            <EmailList />
+          </div>
+        );
       case 'processor':
         return <EmailProcessor />;
       case 'analytics':
         return <Analytics />;
+      case 'team':
+        return <TeamManagement />;
+      case 'settings':
+        return <SettingsPanel />;
       default:
         return <Dashboard />;
     }
   };
 
   return (
-    <Layout>
+    <Layout activeView={activeView} setActiveView={setActiveView}>
       <div className="min-h-screen">
         {/* Hero Section */}
         <section className="relative py-20 px-6 text-center overflow-hidden">
@@ -136,6 +148,22 @@ const Index = () => {
             >
               <BarChart3 className="h-4 w-4 mr-2" />
               Analytics
+            </Button>
+            <Button
+              variant={activeView === 'team' ? 'default' : 'ghost'}
+              onClick={() => setActiveView('team')}
+              className={activeView === 'team' ? 'bg-gradient-to-r from-blue-600 to-purple-600' : 'text-blue-700 hover:bg-blue-100'}
+            >
+              <Users className="h-4 w-4 mr-2" />
+              Équipe
+            </Button>
+            <Button
+              variant={activeView === 'settings' ? 'default' : 'ghost'}
+              onClick={() => setActiveView('settings')}
+              className={activeView === 'settings' ? 'bg-gradient-to-r from-blue-600 to-purple-600' : 'text-blue-700 hover:bg-blue-100'}
+            >
+              <Settings className="h-4 w-4 mr-2" />
+              Paramètres
             </Button>
           </div>
         </section>
