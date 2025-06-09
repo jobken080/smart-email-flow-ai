@@ -4,20 +4,48 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/
 import { Progress } from './ui/progress';
 import { Badge } from './ui/badge';
 import { TrendingUp, Mail, Clock, Zap, AlertTriangle, CheckCircle } from 'lucide-react';
+import { useEmails } from '@/hooks/useEmails';
+import { format } from 'date-fns';
+import { fr } from 'date-fns/locale';
 
 export const Dashboard: React.FC = () => {
-  const stats = [
-    { title: 'Emails traités', value: '1,247', change: '+12%', icon: Mail, color: 'blue' },
-    { title: 'Réponses automatiques', value: '892', change: '+8%', icon: Zap, color: 'green' },
-    { title: 'Temps moyen de traitement', value: '2.3min', change: '-15%', icon: Clock, color: 'purple' },
-    { title: 'Emails urgents', value: '23', change: '+3%', icon: AlertTriangle, color: 'red' }
-  ];
+  const { emails } = useEmails();
 
-  const recentEmails = [
-    { id: 1, from: 'client@entreprise.com', subject: 'Demande de devis urgent', priority: 5, category: 'Commercial', status: 'pending' },
-    { id: 2, from: 'support@software.fr', subject: 'Problème technique', priority: 4, category: 'Support', status: 'auto-replied' },
-    { id: 3, from: 'marketing@agency.com', subject: 'Proposition de partenariat', priority: 2, category: 'Business', status: 'processed' },
-    { id: 4, from: 'invoice@supplier.com', subject: 'Facture #2024-001', priority: 3, category: 'Finance', status: 'processed' }
+  // Calculate real statistics from emails
+  const totalEmails = emails.length;
+  const unreadEmails = emails.filter(email => !email.is_read).length;
+  const urgentEmails = emails.filter(email => (email.priority || 0) >= 4).length;
+  const recentEmails = emails.slice(0, 4);
+
+  const stats = [
+    { 
+      title: 'Emails reçus', 
+      value: totalEmails.toString(), 
+      change: '+12%', 
+      icon: Mail, 
+      color: 'blue' 
+    },
+    { 
+      title: 'Non lus', 
+      value: unreadEmails.toString(), 
+      change: `${unreadEmails > 0 ? '+' : ''}${unreadEmails}`, 
+      icon: Zap, 
+      color: 'green' 
+    },
+    { 
+      title: 'Temps moyen de réponse', 
+      value: '2.3min', 
+      change: '-15%', 
+      icon: Clock, 
+      color: 'purple' 
+    },
+    { 
+      title: 'Emails urgents', 
+      value: urgentEmails.toString(), 
+      change: `${urgentEmails > 0 ? '+' : ''}${urgentEmails}`, 
+      icon: AlertTriangle, 
+      color: 'red' 
+    }
   ];
 
   return (
@@ -46,27 +74,43 @@ export const Dashboard: React.FC = () => {
         <Card className="bg-white/70 backdrop-blur-sm border-blue-200">
           <CardHeader>
             <CardTitle className="text-blue-700">Emails récents</CardTitle>
-            <CardDescription>Derniers emails traités par l'IA</CardDescription>
+            <CardDescription>Derniers emails reçus</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              {recentEmails.map((email) => (
-                <div key={email.id} className="flex items-center justify-between p-3 bg-blue-50 rounded-lg">
-                  <div className="flex-1">
-                    <p className="font-medium text-gray-800">{email.subject}</p>
-                    <p className="text-sm text-gray-600">{email.from}</p>
+              {recentEmails.length === 0 ? (
+                <p className="text-gray-500 text-center py-4">
+                  Aucun email trouvé. Synchronisez votre Gmail pour voir vos emails.
+                </p>
+              ) : (
+                recentEmails.map((email) => (
+                  <div key={email.id} className="flex items-center justify-between p-3 bg-blue-50 rounded-lg">
+                    <div className="flex-1">
+                      <p className={`font-medium ${!email.is_read ? 'font-bold text-gray-900' : 'text-gray-800'}`}>
+                        {email.subject}
+                      </p>
+                      <p className="text-sm text-gray-600">
+                        {email.from_name || email.from_email}
+                      </p>
+                      <p className="text-xs text-gray-500">
+                        {format(new Date(email.received_at), 'dd/MM/yyyy à HH:mm', { locale: fr })}
+                      </p>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      {email.priority && email.priority >= 3 && (
+                        <Badge variant={email.priority >= 4 ? "destructive" : "default"}>
+                          Priorité {email.priority}
+                        </Badge>
+                      )}
+                      {email.category && (
+                        <Badge variant="outline">{email.category}</Badge>
+                      )}
+                      {email.status === 'replied' && <CheckCircle className="h-4 w-4 text-green-600" />}
+                      {!email.is_read && <Clock className="h-4 w-4 text-orange-600" />}
+                    </div>
                   </div>
-                  <div className="flex items-center space-x-2">
-                    <Badge variant={email.priority >= 4 ? "destructive" : email.priority >= 3 ? "default" : "secondary"}>
-                      Priorité {email.priority}
-                    </Badge>
-                    <Badge variant="outline">{email.category}</Badge>
-                    {email.status === 'processed' && <CheckCircle className="h-4 w-4 text-green-600" />}
-                    {email.status === 'auto-replied' && <Zap className="h-4 w-4 text-blue-600" />}
-                    {email.status === 'pending' && <Clock className="h-4 w-4 text-orange-600" />}
-                  </div>
-                </div>
-              ))}
+                ))
+              )}
             </div>
           </CardContent>
         </Card>
