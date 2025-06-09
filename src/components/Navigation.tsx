@@ -1,7 +1,9 @@
 
 import React from 'react';
 import { Button } from './ui/button';
-import { Mail, Brain, BarChart3, Settings, Users } from 'lucide-react';
+import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
+import { Mail, Brain, BarChart3, Settings, Users, LogOut } from 'lucide-react';
+import { useAuth } from '@/hooks/useAuth';
 
 interface NavigationProps {
   activeView: string;
@@ -9,6 +11,8 @@ interface NavigationProps {
 }
 
 export const Navigation: React.FC<NavigationProps> = ({ activeView, setActiveView }) => {
+  const { user, signOut } = useAuth();
+
   return (
     <nav className="bg-white/70 backdrop-blur-md border-b border-blue-200 px-6 py-4">
       <div className="max-w-7xl mx-auto flex items-center justify-between">
@@ -54,6 +58,27 @@ export const Navigation: React.FC<NavigationProps> = ({ activeView, setActiveVie
             <Settings className="h-4 w-4 mr-2" />
             Paramètres
           </Button>
+
+          {/* User menu */}
+          <div className="flex items-center space-x-3 ml-6">
+            <Avatar className="h-8 w-8">
+              <AvatarImage src="" alt={user?.email || ''} />
+              <AvatarFallback>
+                {user?.email?.charAt(0).toUpperCase() || 'U'}
+              </AvatarFallback>
+            </Avatar>
+            <span className="text-sm text-gray-700 hidden md:block">
+              {user?.email}
+            </span>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={signOut}
+              className="text-gray-600 hover:text-red-600 hover:bg-red-50"
+            >
+              <LogOut className="h-4 w-4" />
+            </Button>
+          </div>
         </div>
       </div>
     </nav>
