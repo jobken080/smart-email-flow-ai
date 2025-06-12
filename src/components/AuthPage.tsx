@@ -5,6 +5,7 @@ import { Button } from './ui/button';
 import { Brain, Mail } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
 
 export const AuthPage: React.FC = () => {
   const [loading, setLoading] = useState(false);
