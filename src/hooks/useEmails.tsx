@@ -38,23 +38,34 @@ export const useEmails = () => {
       if (!user || !session) return;
 
       try {
+        console.log('Checking Gmail connection for user:', user.id);
+        
         // Check if user has Gmail tokens
-        const { data: tokenData } = await supabase
+        const { data: tokenData, error } = await supabase
           .from('user_gmail_tokens')
           .select('*')
           .eq('user_id', user.id)
           .single();
 
-        if (tokenData) {
+        console.log('Token data:', tokenData, 'Error:', error);
+
+        if (tokenData && !error) {
+          console.log('Gmail tokens found, setting connected to true');
           setIsGmailConnected(true);
           // Auto-sync emails if connected
+          console.log('Auto-syncing emails...');
           syncGmailMutation.mutate();
         } else if (session.provider_token) {
+          console.log('Session has provider token, storing Google tokens...');
           // User logged in with Google, store tokens and sync
           await storeGoogleTokens();
+        } else {
+          console.log('No Gmail connection found');
+          setIsGmailConnected(false);
         }
       } catch (error) {
         console.error('Error checking Gmail connection:', error);
+        setIsGmailConnected(false);
       }
     };
 
@@ -62,9 +73,14 @@ export const useEmails = () => {
   }, [user, session]);
 
   const storeGoogleTokens = async () => {
-    if (!user || !session?.provider_token) return;
+    if (!user || !session?.provider_token) {
+      console.log('Missing user or provider token');
+      return;
+    }
 
     try {
+      console.log('Storing Google tokens for user:', user.id);
+      
       // Get user's email from Google
       const profileResponse = await fetch('https://www.googleapis.com/oauth2/v2/userinfo', {
         headers: {
@@ -73,6 +89,7 @@ export const useEmails = () => {
       });
 
       const profile = await profileResponse.json();
+      console.log('Google profile:', profile);
 
       // Store tokens in database
       const { error } = await supabase
@@ -85,10 +102,17 @@ export const useEmails = () => {
           email_address: profile.email,
         });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error storing tokens:', error);
+        throw error;
+      }
 
+      console.log('Tokens stored successfully');
       setIsGmailConnected(true);
       toast.success('Gmail connecté avec succès');
+      
+      // Trigger email sync
+      console.log('Triggering email sync after storing tokens...');
       syncGmailMutation.mutate();
     } catch (error) {
       console.error('Error storing Google tokens:', error);
@@ -96,10 +120,15 @@ export const useEmails = () => {
     }
   };
 
-  const { data: emails = [], isLoading, error } = useQuery({
+  const { data: emails = [], isLoading, error, refetch } = useQuery({
     queryKey: ['emails', user?.id],
     queryFn: async () => {
-      if (!user) return [];
+      if (!user) {
+        console.log('No user, returning empty array');
+        return [];
+      }
+      
+      console.log('Fetching emails for user:', user.id);
       
       const { data, error } = await supabase
         .from('emails')
@@ -107,32 +136,66 @@ export const useEmails = () => {
         .eq('user_id', user.id)
         .order('received_at', { ascending: false });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error fetching emails:', error);
+        throw error;
+      }
+      
+      console.log(`Fetched ${data?.length || 0} emails from database`);
       return data as Email[];
     },
     enabled: !!user,
+    staleTime: 30000, // Consider data fresh for 30 seconds
+    refetchInterval: 60000, // Refetch every minute
   });
 
   const syncGmailMutation = useMutation({
     mutationFn: async () => {
+      console.log('Starting Gmail sync...');
+      
+      if (!user) {
+        throw new Error('User not authenticated');
+      }
+
+      const session = await supabase.auth.getSession();
+      if (!session.data.session?.access_token) {
+        throw new Error('No access token available');
+      }
+
+      console.log('Calling sync-gmail function...');
       const { data, error } = await supabase.functions.invoke('sync-gmail', {
         headers: {
-          Authorization: `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`,
+          Authorization: `Bearer ${session.data.session.access_token}`,
         },
       });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Sync function error:', error);
+        throw error;
+      }
+      
+      console.log('Sync function response:', data);
       return data;
     },
     onSuccess: (data) => {
+      console.log('Sync successful:', data);
+      // Invalidate and refetch emails
       queryClient.invalidateQueries({ queryKey: ['emails'] });
-      toast.success(`${data.count} emails synchronisés avec succès`);
+      refetch();
+      toast.success(`${data?.count || 0} emails synchronisés avec succès`);
     },
     onError: (error) => {
       console.error('Sync error:', error);
       toast.error('Erreur lors de la synchronisation des emails');
     },
   });
+
+  // Function to manually refresh emails
+  const refreshEmails = () => {
+    console.log('Manual email refresh triggered');
+    queryClient.invalidateQueries({ queryKey: ['emails'] });
+    refetch();
+  };
 
   return {
     emails,
@@ -141,5 +204,6 @@ export const useEmails = () => {
     isGmailConnected,
     syncGmail: syncGmailMutation.mutate,
     isSyncing: syncGmailMutation.isPending,
+    refreshEmails,
   };
 };
