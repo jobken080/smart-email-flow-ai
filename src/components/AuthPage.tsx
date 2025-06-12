@@ -50,7 +50,7 @@ export const AuthPage: React.FC = () => {
         <div className="text-center">
           <div className="inline-flex items-center space-x-2 bg-white/70 backdrop-blur-sm px-4 py-2 rounded-full mb-4 border border-blue-200">
             <Brain className="h-6 w-6 text-blue-600" />
-            <span className="font-bold text-blue-700">Email Assistant AI</span>
+            <span className="font-bold text-blue-700">Noflay</span>
           </div>
           <h1 className="text-2xl font-bold text-gray-800 mb-2">
             Connexion Gmail

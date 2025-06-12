@@ -58,6 +58,12 @@ export const Dashboard: React.FC = () => {
 
   return (
     <div className="p-6 space-y-6">
+      {/* Header with Noflay branding */}
+      <div className="text-center mb-8">
+        <h1 className="text-3xl font-bold text-blue-700 mb-2">Noflay Dashboard</h1>
+        <p className="text-gray-600">Gérez vos emails Gmail avec l'intelligence artificielle</p>
+      </div>
+
       {/* Gmail Connection Status */}
       <Card className="bg-white/70 backdrop-blur-sm border-blue-200">
         <CardHeader className="pb-3">
@@ -141,7 +147,6 @@ export const Dashboard: React.FC = () => {
         ))}
       </div>
 
-      {/* Recent Activity */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <Card className="bg-white/70 backdrop-blur-sm border-blue-200">
           <CardHeader>
