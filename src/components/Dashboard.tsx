@@ -1,15 +1,16 @@
 
 import React from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
+import { Button } from './ui/button';
 import { Progress } from './ui/progress';
 import { Badge } from './ui/badge';
-import { TrendingUp, Mail, Clock, Zap, AlertTriangle, CheckCircle } from 'lucide-react';
+import { TrendingUp, Mail, Clock, Zap, AlertTriangle, CheckCircle, RefreshCw, Wifi, WifiOff } from 'lucide-react';
 import { useEmails } from '@/hooks/useEmails';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 
 export const Dashboard: React.FC = () => {
-  const { emails } = useEmails();
+  const { emails, isGmailConnected, syncGmail, isSyncing } = useEmails();
 
   // Calculate real statistics from emails
   const totalEmails = emails.length;
@@ -50,6 +51,46 @@ export const Dashboard: React.FC = () => {
 
   return (
     <div className="p-6 space-y-6">
+      {/* Gmail Connection Status */}
+      <Card className="bg-white/70 backdrop-blur-sm border-blue-200">
+        <CardHeader className="pb-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-2">
+              {isGmailConnected ? (
+                <Wifi className="h-5 w-5 text-green-600" />
+              ) : (
+                <WifiOff className="h-5 w-5 text-red-600" />
+              )}
+              <CardTitle className="text-lg">
+                Statut Gmail: {isGmailConnected ? 'Connecté' : 'Déconnecté'}
+              </CardTitle>
+            </div>
+            {isGmailConnected && (
+              <Button
+                onClick={() => syncGmail()}
+                disabled={isSyncing}
+                size="sm"
+                className="bg-blue-600 hover:bg-blue-700"
+              >
+                <RefreshCw className={`h-4 w-4 mr-2 ${isSyncing ? 'animate-spin' : ''}`} />
+                {isSyncing ? 'Synchronisation...' : 'Synchroniser'}
+              </Button>
+            )}
+          </div>
+        </CardHeader>
+        <CardContent>
+          {isGmailConnected ? (
+            <p className="text-sm text-green-600">
+              ✅ Gmail connecté avec succès. Vos emails sont synchronisés automatiquement.
+            </p>
+          ) : (
+            <p className="text-sm text-orange-600">
+              ⚠️ Gmail non connecté. Reconnectez-vous pour synchroniser vos emails.
+            </p>
+          )}
+        </CardContent>
+      </Card>
+
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         {stats.map((stat, index) => (
@@ -74,11 +115,15 @@ export const Dashboard: React.FC = () => {
         <Card className="bg-white/70 backdrop-blur-sm border-blue-200">
           <CardHeader>
             <CardTitle className="text-blue-700">Emails récents</CardTitle>
-            <CardDescription>Derniers emails reçus</CardDescription>
+            <CardDescription>Derniers emails synchronisés depuis Gmail</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              {recentEmails.length === 0 ? (
+              {!isGmailConnected ? (
+                <p className="text-gray-500 text-center py-4">
+                  Connectez-vous avec Google pour voir vos emails Gmail.
+                </p>
+              ) : recentEmails.length === 0 ? (
                 <p className="text-gray-500 text-center py-4">
                   Aucun email trouvé. Synchronisez votre Gmail pour voir vos emails.
                 </p>

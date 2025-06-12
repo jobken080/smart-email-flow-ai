@@ -9,6 +9,101 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      appointments: {
+        Row: {
+          appointment_date: string
+          artisan_id: string
+          client_id: string
+          created_at: string
+          duration_hours: number | null
+          id: string
+          location: string | null
+          notes: string | null
+          request_id: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          appointment_date: string
+          artisan_id: string
+          client_id: string
+          created_at?: string
+          duration_hours?: number | null
+          id?: string
+          location?: string | null
+          notes?: string | null
+          request_id: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          appointment_date?: string
+          artisan_id?: string
+          client_id?: string
+          created_at?: string
+          duration_hours?: number | null
+          id?: string
+          location?: string | null
+          notes?: string | null
+          request_id?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "appointments_request_id_fkey"
+            columns: ["request_id"]
+            isOneToOne: false
+            referencedRelation: "work_requests"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      artisan_profiles: {
+        Row: {
+          average_rating: number | null
+          category: string
+          created_at: string
+          description: string | null
+          experience_years: number | null
+          hourly_rate: number | null
+          id: string
+          is_verified: boolean | null
+          specialties: string[] | null
+          total_reviews: number | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          average_rating?: number | null
+          category: string
+          created_at?: string
+          description?: string | null
+          experience_years?: number | null
+          hourly_rate?: number | null
+          id?: string
+          is_verified?: boolean | null
+          specialties?: string[] | null
+          total_reviews?: number | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          average_rating?: number | null
+          category?: string
+          created_at?: string
+          description?: string | null
+          experience_years?: number | null
+          hourly_rate?: number | null
+          id?: string
+          is_verified?: boolean | null
+          specialties?: string[] | null
+          total_reviews?: number | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       email_labels: {
         Row: {
           color: string | null
@@ -43,15 +138,18 @@ export type Database = {
           from_email: string
           from_name: string | null
           gmail_id: string
+          gmail_message_id: string | null
           id: string
           is_read: boolean | null
           is_starred: boolean | null
           labels: string[] | null
+          last_synced_at: string | null
           priority: number | null
           received_at: string
           snippet: string | null
           status: string | null
           subject: string
+          sync_status: string | null
           thread_id: string | null
           to_email: string
           updated_at: string
@@ -66,15 +164,18 @@ export type Database = {
           from_email: string
           from_name?: string | null
           gmail_id: string
+          gmail_message_id?: string | null
           id?: string
           is_read?: boolean | null
           is_starred?: boolean | null
           labels?: string[] | null
+          last_synced_at?: string | null
           priority?: number | null
           received_at: string
           snippet?: string | null
           status?: string | null
           subject: string
+          sync_status?: string | null
           thread_id?: string | null
           to_email: string
           updated_at?: string
@@ -89,15 +190,18 @@ export type Database = {
           from_email?: string
           from_name?: string | null
           gmail_id?: string
+          gmail_message_id?: string | null
           id?: string
           is_read?: boolean | null
           is_starred?: boolean | null
           labels?: string[] | null
+          last_synced_at?: string | null
           priority?: number | null
           received_at?: string
           snippet?: string | null
           status?: string | null
           subject?: string
+          sync_status?: string | null
           thread_id?: string | null
           to_email?: string
           updated_at?: string
@@ -142,7 +246,9 @@ export type Database = {
           email_address: string | null
           expires_at: string | null
           id: string
+          last_sync_at: string | null
           refresh_token: string | null
+          scopes: string[] | null
           updated_at: string
           user_id: string
         }
@@ -152,7 +258,9 @@ export type Database = {
           email_address?: string | null
           expires_at?: string | null
           id?: string
+          last_sync_at?: string | null
           refresh_token?: string | null
+          scopes?: string[] | null
           updated_at?: string
           user_id: string
         }
@@ -162,9 +270,148 @@ export type Database = {
           email_address?: string | null
           expires_at?: string | null
           id?: string
+          last_sync_at?: string | null
           refresh_token?: string | null
+          scopes?: string[] | null
           updated_at?: string
           user_id?: string
+        }
+        Relationships: []
+      }
+      user_profiles: {
+        Row: {
+          address: string | null
+          city: string | null
+          created_at: string
+          first_name: string | null
+          id: string
+          last_name: string | null
+          phone: string | null
+          profile_image_url: string | null
+          updated_at: string
+          user_id: string
+          user_type: string
+        }
+        Insert: {
+          address?: string | null
+          city?: string | null
+          created_at?: string
+          first_name?: string | null
+          id?: string
+          last_name?: string | null
+          phone?: string | null
+          profile_image_url?: string | null
+          updated_at?: string
+          user_id: string
+          user_type: string
+        }
+        Update: {
+          address?: string | null
+          city?: string | null
+          created_at?: string
+          first_name?: string | null
+          id?: string
+          last_name?: string | null
+          phone?: string | null
+          profile_image_url?: string | null
+          updated_at?: string
+          user_id?: string
+          user_type?: string
+        }
+        Relationships: []
+      }
+      work_proposals: {
+        Row: {
+          artisan_id: string
+          created_at: string
+          estimated_duration: string | null
+          id: string
+          message: string | null
+          proposed_price: number
+          request_id: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          artisan_id: string
+          created_at?: string
+          estimated_duration?: string | null
+          id?: string
+          message?: string | null
+          proposed_price: number
+          request_id: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          artisan_id?: string
+          created_at?: string
+          estimated_duration?: string | null
+          id?: string
+          message?: string | null
+          proposed_price?: number
+          request_id?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "work_proposals_request_id_fkey"
+            columns: ["request_id"]
+            isOneToOne: false
+            referencedRelation: "work_requests"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      work_requests: {
+        Row: {
+          budget_max: number | null
+          budget_min: number | null
+          category: string
+          client_id: string
+          created_at: string
+          description: string
+          id: string
+          images: string[] | null
+          location: string | null
+          preferred_date: string | null
+          status: string
+          title: string
+          updated_at: string
+          urgency: string | null
+        }
+        Insert: {
+          budget_max?: number | null
+          budget_min?: number | null
+          category: string
+          client_id: string
+          created_at?: string
+          description: string
+          id?: string
+          images?: string[] | null
+          location?: string | null
+          preferred_date?: string | null
+          status?: string
+          title: string
+          updated_at?: string
+          urgency?: string | null
+        }
+        Update: {
+          budget_max?: number | null
+          budget_min?: number | null
+          category?: string
+          client_id?: string
+          created_at?: string
+          description?: string
+          id?: string
+          images?: string[] | null
+          location?: string | null
+          preferred_date?: string | null
+          status?: string
+          title?: string
+          updated_at?: string
+          urgency?: string | null
         }
         Relationships: []
       }
