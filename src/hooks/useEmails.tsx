@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -42,7 +41,6 @@ export const useEmails = () => {
 
       try {
         console.log('Checking Gmail connection for user:', user.id);
-        console.log('Session provider:', session.provider);
         console.log('Session provider_token exists:', !!session.provider_token);
         
         // Check if user has Gmail tokens
@@ -57,8 +55,8 @@ export const useEmails = () => {
         if (tokenData && !error) {
           console.log('Gmail tokens found, setting connected to true');
           setIsGmailConnected(true);
-        } else if (session.provider === 'google' && session.provider_token) {
-          console.log('Google session detected, storing tokens...');
+        } else if (session.provider_token) {
+          console.log('Provider token detected, storing tokens...');
           await storeGoogleTokens();
         } else {
           console.log('No Gmail connection found');
