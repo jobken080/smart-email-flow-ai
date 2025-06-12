@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -31,7 +32,7 @@ export const useEmails = () => {
   const queryClient = useQueryClient();
   const [isGmailConnected, setIsGmailConnected] = useState(false);
 
-  // Check if Gmail is connected and auto-sync
+  // Check if Gmail is connected
   useEffect(() => {
     const checkGmailConnection = async () => {
       if (!user || !session) {
@@ -48,13 +49,18 @@ export const useEmails = () => {
           .from('user_gmail_tokens')
           .select('*')
           .eq('user_id', user.id)
-          .single();
+          .maybeSingle();
 
         console.log('Token data:', tokenData, 'Error:', error);
 
         if (tokenData && !error) {
           console.log('Gmail tokens found, setting connected to true');
           setIsGmailConnected(true);
+          // Auto-sync after connecting
+          setTimeout(() => {
+            console.log('Auto-syncing emails after connection check...');
+            syncGmailMutation.mutate();
+          }, 2000);
         } else if (session.provider_token) {
           console.log('Provider token detected, storing tokens...');
           await storeGoogleTokens();
@@ -94,14 +100,16 @@ export const useEmails = () => {
       const profile = await profileResponse.json();
       console.log('Google profile email:', profile.email);
 
-      // Store tokens in database
+      // Store tokens in database with longer expiry
+      const expiresAt = new Date(Date.now() + 3600 * 1000).toISOString(); // 1 hour from now
+      
       const { error } = await supabase
         .from('user_gmail_tokens')
         .upsert({
           user_id: user.id,
           access_token: session.provider_token,
           refresh_token: session.provider_refresh_token || '',
-          expires_at: new Date(Date.now() + 3600 * 1000).toISOString(), // 1 hour from now
+          expires_at: expiresAt,
           email_address: profile.email,
         });
 
@@ -114,7 +122,7 @@ export const useEmails = () => {
       setIsGmailConnected(true);
       toast.success('Gmail connecté avec succès');
       
-      // Trigger email sync after a short delay
+      // Trigger email sync after storing tokens
       setTimeout(() => {
         console.log('Triggering email sync after storing tokens...');
         syncGmailMutation.mutate();
@@ -162,15 +170,15 @@ export const useEmails = () => {
         throw new Error('User not authenticated');
       }
 
-      // Check if we have stored tokens first
+      // Double-check tokens exist before syncing
       const { data: tokenData, error: tokenError } = await supabase
         .from('user_gmail_tokens')
         .select('*')
         .eq('user_id', user.id)
-        .single();
+        .maybeSingle();
 
       if (tokenError || !tokenData) {
-        console.error('No Gmail tokens found:', tokenError);
+        console.error('No Gmail tokens found during sync:', tokenError);
         throw new Error('Gmail not connected. Please reconnect your Google account.');
       }
 

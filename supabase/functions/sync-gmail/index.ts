@@ -35,33 +35,44 @@ serve(async (req) => {
 
     const authHeader = req.headers.get('Authorization');
     if (!authHeader) {
+      console.error('No authorization header');
       throw new Error('No authorization header');
     }
 
     const { data: { user } } = await supabase.auth.getUser(authHeader.replace('Bearer ', ''));
     if (!user) {
+      console.error('User not found');
       throw new Error('User not found');
     }
 
     console.log('User authenticated:', user.id);
 
-    // Get user's Gmail tokens
+    // Get user's Gmail tokens with better error handling
     const { data: tokenData, error: tokenError } = await supabase
       .from('user_gmail_tokens')
       .select('*')
       .eq('user_id', user.id)
-      .single();
+      .maybeSingle();
 
-    if (tokenError || !tokenData) {
-      console.error('Gmail token error:', tokenError);
-      throw new Error('Gmail not connected');
+    console.log('Token query result:', { tokenData, tokenError });
+
+    if (tokenError) {
+      console.error('Token query error:', tokenError);
+      throw new Error(`Database error: ${tokenError.message}`);
     }
 
-    console.log('Gmail tokens found for user');
+    if (!tokenData) {
+      console.error('No Gmail tokens found for user:', user.id);
+      throw new Error('Gmail not connected. Please reconnect your Google account.');
+    }
+
+    console.log('Gmail tokens found for user, checking token validity...');
 
     // Check if token is expired and refresh if needed
     let accessToken = tokenData.access_token;
-    if (tokenData.expires_at && new Date(tokenData.expires_at) < new Date()) {
+    const tokenExpired = tokenData.expires_at && new Date(tokenData.expires_at) < new Date();
+    
+    if (tokenExpired && tokenData.refresh_token) {
       console.log('Token expired, refreshing...');
       
       const refreshResponse = await fetch('https://oauth2.googleapis.com/token', {
@@ -70,7 +81,7 @@ serve(async (req) => {
           'Content-Type': 'application/x-www-form-urlencoded',
         },
         body: new URLSearchParams({
-          refresh_token: tokenData.refresh_token || '',
+          refresh_token: tokenData.refresh_token,
           client_id: Deno.env.get('GOOGLE_CLIENT_ID') ?? '',
           client_secret: Deno.env.get('GOOGLE_CLIENT_SECRET') ?? '',
           grant_type: 'refresh_token',
@@ -141,7 +152,6 @@ serve(async (req) => {
       const from = headers.find(h => h.name === 'From')?.value || '';
       const to = headers.find(h => h.name === 'To')?.value || '';
       const subject = headers.find(h => h.name === 'Subject')?.value || '';
-      const date = headers.find(h => h.name === 'Date')?.value || '';
 
       // Extract body text
       let bodyText = '';
