@@ -28,120 +28,13 @@ export interface Email {
 }
 
 export const useEmails = () => {
-  const { user, session } = useAuth();
+  const { user } = useAuth();
   const queryClient = useQueryClient();
-  const [isGmailConnected, setIsGmailConnected] = useState(false);
 
-  // Check if Gmail is connected
-  useEffect(() => {
-    const checkGmailConnection = async () => {
-      if (!user || !session) {
-        console.log('No user or session, skipping Gmail check');
-        return;
-      }
-
-      try {
-        console.log('Checking Gmail connection for user:', user.id);
-        console.log('Session provider_token exists:', !!session.provider_token);
-        
-        // Check if user has Gmail tokens
-        const { data: tokenData, error } = await supabase
-          .from('user_gmail_tokens')
-          .select('*')
-          .eq('user_id', user.id)
-          .maybeSingle();
-
-        console.log('Token data:', tokenData, 'Error:', error);
-
-        if (tokenData && !error) {
-          console.log('Gmail tokens found, setting connected to true');
-          setIsGmailConnected(true);
-          // Auto-sync after connecting
-          setTimeout(() => {
-            console.log('Auto-syncing emails after connection check...');
-            syncGmailMutation.mutate();
-          }, 2000);
-        } else if (session.provider_token) {
-          console.log('Provider token detected, storing tokens...');
-          await storeGoogleTokens();
-        } else {
-          console.log('No Gmail connection found');
-          setIsGmailConnected(false);
-        }
-      } catch (error) {
-        console.error('Error checking Gmail connection:', error);
-        setIsGmailConnected(false);
-      }
-    };
-
-    checkGmailConnection();
-  }, [user, session]);
-
-  const storeGoogleTokens = async () => {
-    if (!user || !session?.provider_token) {
-      console.log('Missing user or provider token');
-      return;
-    }
-
-    try {
-      console.log('Storing Google tokens for user:', user.id);
-      
-      // Get user's email from Google
-      const profileResponse = await fetch('https://www.googleapis.com/oauth2/v2/userinfo', {
-        headers: {
-          'Authorization': `Bearer ${session.provider_token}`,
-        },
-      });
-
-      if (!profileResponse.ok) {
-        throw new Error('Failed to get user profile from Google');
-      }
-
-      const profile = await profileResponse.json();
-      console.log('Google profile email:', profile.email);
-
-      // Store tokens in database with longer expiry
-      const expiresAt = new Date(Date.now() + 3600 * 1000).toISOString(); // 1 hour from now
-      
-      const { error } = await supabase
-        .from('user_gmail_tokens')
-        .upsert({
-          user_id: user.id,
-          access_token: session.provider_token,
-          refresh_token: session.provider_refresh_token || '',
-          expires_at: expiresAt,
-          email_address: profile.email,
-        });
-
-      if (error) {
-        console.error('Error storing tokens:', error);
-        throw error;
-      }
-
-      console.log('Tokens stored successfully');
-      setIsGmailConnected(true);
-      toast.success('Gmail connecté avec succès');
-      
-      // Trigger email sync after storing tokens
-      setTimeout(() => {
-        console.log('Triggering email sync after storing tokens...');
-        syncGmailMutation.mutate();
-      }, 1000);
-    } catch (error) {
-      console.error('Error storing Google tokens:', error);
-      toast.error('Erreur lors de la connexion Gmail');
-    }
-  };
-
-  const { data: emails = [], isLoading, error, refetch } = useQuery({
+  const { data: emails = [], isLoading, error } = useQuery({
     queryKey: ['emails', user?.id],
     queryFn: async () => {
-      if (!user) {
-        console.log('No user, returning empty array');
-        return [];
-      }
-      
-      console.log('Fetching emails for user:', user.id);
+      if (!user) return [];
       
       const { data, error } = await supabase
         .from('emails')
@@ -149,64 +42,26 @@ export const useEmails = () => {
         .eq('user_id', user.id)
         .order('received_at', { ascending: false });
 
-      if (error) {
-        console.error('Error fetching emails:', error);
-        throw error;
-      }
-      
-      console.log(`Fetched ${data?.length || 0} emails from database`);
+      if (error) throw error;
       return data as Email[];
     },
     enabled: !!user,
-    staleTime: 30000,
-    refetchInterval: 60000,
   });
 
   const syncGmailMutation = useMutation({
     mutationFn: async () => {
-      console.log('Starting Gmail sync...');
-      
-      if (!user) {
-        throw new Error('User not authenticated');
-      }
-
-      // Double-check tokens exist before syncing
-      const { data: tokenData, error: tokenError } = await supabase
-        .from('user_gmail_tokens')
-        .select('*')
-        .eq('user_id', user.id)
-        .maybeSingle();
-
-      if (tokenError || !tokenData) {
-        console.error('No Gmail tokens found during sync:', tokenError);
-        throw new Error('Gmail not connected. Please reconnect your Google account.');
-      }
-
-      const session = await supabase.auth.getSession();
-      if (!session.data.session?.access_token) {
-        throw new Error('No access token available');
-      }
-
-      console.log('Calling sync-gmail function...');
       const { data, error } = await supabase.functions.invoke('sync-gmail', {
         headers: {
-          Authorization: `Bearer ${session.data.session.access_token}`,
+          Authorization: `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`,
         },
       });
 
-      if (error) {
-        console.error('Sync function error:', error);
-        throw error;
-      }
-      
-      console.log('Sync function response:', data);
+      if (error) throw error;
       return data;
     },
     onSuccess: (data) => {
-      console.log('Sync successful:', data);
       queryClient.invalidateQueries({ queryKey: ['emails'] });
-      refetch();
-      toast.success(`${data?.count || 0} emails synchronisés avec succès`);
+      toast.success(`${data.count} emails synchronisés avec succès`);
     },
     onError: (error) => {
       console.error('Sync error:', error);
@@ -214,19 +69,35 @@ export const useEmails = () => {
     },
   });
 
-  const refreshEmails = () => {
-    console.log('Manual email refresh triggered');
-    queryClient.invalidateQueries({ queryKey: ['emails'] });
-    refetch();
-  };
+  const connectGmailMutation = useMutation({
+    mutationFn: async (authCode: string) => {
+      const { data, error } = await supabase.functions.invoke('gmail-auth', {
+        body: { code: authCode },
+        headers: {
+          Authorization: `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`,
+        },
+      });
+
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      toast.success('Gmail connecté avec succès');
+      syncGmailMutation.mutate();
+    },
+    onError: (error) => {
+      console.error('Connect error:', error);
+      toast.error('Erreur lors de la connexion à Gmail');
+    },
+  });
 
   return {
     emails,
     isLoading,
     error,
-    isGmailConnected,
     syncGmail: syncGmailMutation.mutate,
+    connectGmail: connectGmailMutation.mutate,
     isSyncing: syncGmailMutation.isPending,
-    refreshEmails,
+    isConnecting: connectGmailMutation.isPending,
   };
 };

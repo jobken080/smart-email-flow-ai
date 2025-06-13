@@ -26,8 +26,6 @@ serve(async (req) => {
   }
 
   try {
-    console.log('Gmail sync function started');
-    
     const supabase = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_ANON_KEY') ?? ''
@@ -35,46 +33,28 @@ serve(async (req) => {
 
     const authHeader = req.headers.get('Authorization');
     if (!authHeader) {
-      console.error('No authorization header');
       throw new Error('No authorization header');
     }
 
     const { data: { user } } = await supabase.auth.getUser(authHeader.replace('Bearer ', ''));
     if (!user) {
-      console.error('User not found');
       throw new Error('User not found');
     }
 
-    console.log('User authenticated:', user.id);
-
-    // Get user's Gmail tokens with better error handling
+    // Get user's Gmail tokens
     const { data: tokenData, error: tokenError } = await supabase
       .from('user_gmail_tokens')
       .select('*')
       .eq('user_id', user.id)
-      .maybeSingle();
+      .single();
 
-    console.log('Token query result:', { tokenData, tokenError });
-
-    if (tokenError) {
-      console.error('Token query error:', tokenError);
-      throw new Error(`Database error: ${tokenError.message}`);
+    if (tokenError || !tokenData) {
+      throw new Error('Gmail not connected');
     }
-
-    if (!tokenData) {
-      console.error('No Gmail tokens found for user:', user.id);
-      throw new Error('Gmail not connected. Please reconnect your Google account.');
-    }
-
-    console.log('Gmail tokens found for user, checking token validity...');
 
     // Check if token is expired and refresh if needed
     let accessToken = tokenData.access_token;
-    const tokenExpired = tokenData.expires_at && new Date(tokenData.expires_at) < new Date();
-    
-    if (tokenExpired && tokenData.refresh_token) {
-      console.log('Token expired, refreshing...');
-      
+    if (tokenData.expires_at && new Date(tokenData.expires_at) < new Date()) {
       const refreshResponse = await fetch('https://oauth2.googleapis.com/token', {
         method: 'POST',
         headers: {
@@ -90,7 +70,6 @@ serve(async (req) => {
 
       const refreshTokens = await refreshResponse.json();
       if (refreshResponse.ok) {
-        console.log('Token refreshed successfully');
         accessToken = refreshTokens.access_token;
         await supabase
           .from('user_gmail_tokens')
@@ -99,14 +78,10 @@ serve(async (req) => {
             expires_at: new Date(Date.now() + refreshTokens.expires_in * 1000).toISOString(),
           })
           .eq('user_id', user.id);
-      } else {
-        console.error('Token refresh failed:', refreshTokens);
-        throw new Error('Failed to refresh token');
       }
     }
 
     // Fetch emails from Gmail API
-    console.log('Fetching messages from Gmail API...');
     const messagesResponse = await fetch(
       'https://gmail.googleapis.com/gmail/v1/users/me/messages?maxResults=50&q=in:inbox',
       {
@@ -119,18 +94,13 @@ serve(async (req) => {
     const messagesData = await messagesResponse.json();
 
     if (!messagesResponse.ok) {
-      console.error('Gmail API error:', messagesData);
       throw new Error(`Gmail API error: ${messagesData.error?.message || 'Unknown error'}`);
     }
-
-    console.log(`Found ${messagesData.messages?.length || 0} messages`);
 
     const emails = [];
 
     // Process each message
     for (const message of messagesData.messages || []) {
-      console.log(`Processing message ${message.id}`);
-      
       const messageResponse = await fetch(
         `https://gmail.googleapis.com/gmail/v1/users/me/messages/${message.id}`,
         {
@@ -143,7 +113,7 @@ serve(async (req) => {
       const messageData: GmailMessage = await messageResponse.json();
 
       if (!messageResponse.ok) {
-        console.error(`Failed to fetch message ${message.id}:`, messageData);
+        console.error(`Failed to fetch message ${message.id}`);
         continue;
       }
 
@@ -152,6 +122,7 @@ serve(async (req) => {
       const from = headers.find(h => h.name === 'From')?.value || '';
       const to = headers.find(h => h.name === 'To')?.value || '';
       const subject = headers.find(h => h.name === 'Subject')?.value || '';
+      const date = headers.find(h => h.name === 'Date')?.value || '';
 
       // Extract body text
       let bodyText = '';
@@ -202,8 +173,6 @@ serve(async (req) => {
       });
     }
 
-    console.log(`Processed ${emails.length} emails, inserting into database...`);
-
     // Insert emails into database (using upsert to handle duplicates)
     if (emails.length > 0) {
       const { error: insertError } = await supabase
@@ -214,15 +183,7 @@ serve(async (req) => {
         console.error('Error inserting emails:', insertError);
         throw insertError;
       }
-      
-      // Update last sync time
-      await supabase
-        .from('user_gmail_tokens')
-        .update({ last_sync_at: new Date().toISOString() })
-        .eq('user_id', user.id);
     }
-
-    console.log(`Successfully synchronized ${emails.length} emails`);
 
     return new Response(
       JSON.stringify({ 

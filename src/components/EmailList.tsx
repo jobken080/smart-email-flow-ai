@@ -5,16 +5,12 @@ import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Badge } from './ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
-import { Mail, Search, RefreshCw, Star, Eye } from 'lucide-react';
+import { Mail, Search, Filter, Archive, Star, Clock, User, Reply, Forward, Trash2, RefreshCw, Link } from 'lucide-react';
 import { useEmails } from '@/hooks/useEmails';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 
-interface EmailListProps {
-  onEmailSelect?: (emailId: string) => void;
-}
-
-export const EmailList: React.FC<EmailListProps> = ({ onEmailSelect }) => {
+export const EmailList: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedFilter, setSelectedFilter] = useState('all');
   const { emails, isLoading, syncGmail, isSyncing } = useEmails();
@@ -159,11 +155,7 @@ export const EmailList: React.FC<EmailListProps> = ({ onEmailSelect }) => {
           ) : (
             <div className="space-y-3">
               {filteredEmails.map((email) => (
-                <div 
-                  key={email.id} 
-                  className="flex items-center space-x-4 p-4 bg-blue-50 rounded-lg hover:bg-blue-100 transition-colors cursor-pointer"
-                  onClick={() => onEmailSelect?.(email.id)}
-                >
+                <div key={email.id} className="flex items-center space-x-4 p-4 bg-blue-50 rounded-lg hover:bg-blue-100 transition-colors cursor-pointer">
                   <Avatar className="h-10 w-10">
                     <AvatarFallback>
                       {(email.from_name || email.from_email).split(' ').map(n => n[0]?.toUpperCase()).join('').slice(0, 2)}
@@ -202,8 +194,16 @@ export const EmailList: React.FC<EmailListProps> = ({ onEmailSelect }) => {
                     </Badge>
                   </div>
                   
-                  <div className="flex items-center">
-                    <Eye className="h-4 w-4 text-gray-400" />
+                  <div className="flex flex-col space-y-1">
+                    <Button variant="ghost" size="sm">
+                      <Reply className="h-4 w-4" />
+                    </Button>
+                    <Button variant="ghost" size="sm">
+                      <Archive className="h-4 w-4" />
+                    </Button>
+                    <Button variant="ghost" size="sm">
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
                   </div>
                 </div>
               ))}
