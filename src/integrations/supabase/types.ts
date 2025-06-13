@@ -9,33 +9,47 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
-      email_labels: {
+      automation_rules: {
         Row: {
-          color: string | null
+          action_type: string
+          action_value: string | null
           created_at: string
           id: string
+          is_enabled: boolean | null
           name: string
+          trigger_type: string
+          trigger_value: string | null
+          updated_at: string
           user_id: string
         }
         Insert: {
-          color?: string | null
+          action_type: string
+          action_value?: string | null
           created_at?: string
           id?: string
+          is_enabled?: boolean | null
           name: string
+          trigger_type: string
+          trigger_value?: string | null
+          updated_at?: string
           user_id: string
         }
         Update: {
-          color?: string | null
+          action_type?: string
+          action_value?: string | null
           created_at?: string
           id?: string
+          is_enabled?: boolean | null
           name?: string
+          trigger_type?: string
+          trigger_value?: string | null
+          updated_at?: string
           user_id?: string
         }
         Relationships: []
       }
       emails: {
         Row: {
-          attachments: Json | null
           body_html: string | null
           body_text: string | null
           category: string | null
@@ -58,7 +72,6 @@ export type Database = {
           user_id: string
         }
         Insert: {
-          attachments?: Json | null
           body_html?: string | null
           body_text?: string | null
           category?: string | null
@@ -81,7 +94,6 @@ export type Database = {
           user_id: string
         }
         Update: {
-          attachments?: Json | null
           body_html?: string | null
           body_text?: string | null
           category?: string | null
@@ -102,36 +114,6 @@ export type Database = {
           to_email?: string
           updated_at?: string
           user_id?: string
-        }
-        Relationships: []
-      }
-      profiles: {
-        Row: {
-          avatar_url: string | null
-          company_name: string | null
-          created_at: string
-          email: string | null
-          full_name: string | null
-          id: string
-          updated_at: string
-        }
-        Insert: {
-          avatar_url?: string | null
-          company_name?: string | null
-          created_at?: string
-          email?: string | null
-          full_name?: string | null
-          id: string
-          updated_at?: string
-        }
-        Update: {
-          avatar_url?: string | null
-          company_name?: string | null
-          created_at?: string
-          email?: string | null
-          full_name?: string | null
-          id?: string
-          updated_at?: string
         }
         Relationships: []
       }
