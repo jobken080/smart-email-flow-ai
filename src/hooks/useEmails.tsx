@@ -56,16 +56,33 @@ export const useEmails = () => {
         },
       });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Sync function error:', error);
+        throw error;
+      }
       return data;
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['emails'] });
       toast.success(`${data.count} emails synchronisés avec succès`);
     },
-    onError: (error) => {
+    onError: (error: any) => {
       console.error('Sync error:', error);
-      toast.error('Erreur lors de la synchronisation des emails');
+      let errorMessage = 'Erreur lors de la synchronisation des emails';
+      
+      if (error.message) {
+        if (error.message.includes('Google OAuth credentials not configured')) {
+          errorMessage = 'Configuration Google OAuth manquante. Contactez l\'administrateur.';
+        } else if (error.message.includes('Gmail not connected')) {
+          errorMessage = 'Gmail non connecté. Veuillez d\'abord connecter votre compte Gmail.';
+        } else if (error.message.includes('Failed to refresh access token')) {
+          errorMessage = 'Erreur de rafraîchissement du token. Reconnectez votre compte Gmail.';
+        } else {
+          errorMessage = error.message;
+        }
+      }
+      
+      toast.error(errorMessage);
     },
   });
 
@@ -85,7 +102,7 @@ export const useEmails = () => {
       toast.success('Gmail connecté avec succès');
       syncGmailMutation.mutate();
     },
-    onError: (error) => {
+    onError: (error: any) => {
       console.error('Connect error:', error);
       toast.error('Erreur lors de la connexion à Gmail');
     },
